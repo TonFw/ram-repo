@@ -1,4 +1,5 @@
 require 'bundler/gem_tasks'
+Dir.glob('lib/tasks/*.rake').each {|r| import r}
 
 def specs(dir)
   FileList["spec/#{dir}/*_spec.rb"].shuffle.join(' ')
@@ -10,4 +11,3 @@ task :specs do
 end
 
 task :default => :specs
-
