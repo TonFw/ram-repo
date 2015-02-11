@@ -1,6 +1,6 @@
 module CocoapodsRepoRam
   MAJOR = 0
   MINOR = 0
-  PATCH = 1
+  PATCH = 5
   VERSION = "#{MAJOR}.#{MINOR}.#{PATCH}"
 end

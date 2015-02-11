@@ -1,23 +1,26 @@
+# This is an example of a cocoapods plugin adding a top-level subcommand
+# to the 'pod' command.
+#
+# You can also create subcommands of existing or new commands. Say you
+# wanted to add a subcommand to `list` to show newly deprecated pods,
+# (e.g. `pod list deprecated`), there are a few things that would need
+# to change.
+#
+# - move this file to `lib/pod/command/list/deprecated.rb` and update
+#   the class to exist in the the Pod::Command::List namespace
+# - change this class to extend from `List` instead of `Command`. This
+#   tells the plugin system that it is a subcommand of `list`.
+# - edit `lib/cocoapods_plugins.rb` to require this file
+#
+# @todo Create a PR to add your plugin to CocoaPods/cocoapods.org
+#       in the `plugins.json` file, once your plugin is released.
+#
+
+require 'yaml'
+require 'rest_client'
 require 'colorize'
 module Pod
   class Command
-    # This is an example of a cocoapods plugin adding a top-level subcommand
-    # to the 'pod' command.
-    #
-    # You can also create subcommands of existing or new commands. Say you
-    # wanted to add a subcommand to `list` to show newly deprecated pods,
-    # (e.g. `pod list deprecated`), there are a few things that would need
-    # to change.
-    #
-    # - move this file to `lib/pod/command/list/deprecated.rb` and update
-    #   the class to exist in the the Pod::Command::List namespace
-    # - change this class to extend from `List` instead of `Command`. This
-    #   tells the plugin system that it is a subcommand of `list`.
-    # - edit `lib/cocoapods_plugins.rb` to require this file
-    #
-    # @todo Create a PR to add your plugin to CocoaPods/cocoapods.org
-    #       in the `plugins.json` file, once your plugin is released.
-    #
     class Ram < Command
       self.summary = "CocoaPods PlugIn to get dependencies on the RAM repository."
       self.description = <<-DESC
@@ -30,7 +33,11 @@ module Pod
 
       self.arguments = 'NAME'
 
-      # CocoaPods Add command implementation
+      def remote_repo_url
+        thing = YAML.load_file('some.yml')
+      end
+
+      # CocoaPods `pod ram add my-svn-repo http://svn-repo-url` "clones" the repo from the RAM to ~/.cocoapods/repos/NAME
       class Add < Ram
         self.summary = Ram.description
         self.description = Ram.description
@@ -55,28 +62,26 @@ module Pod
         def run
           UI.section("Checking out spec-repo `#{@name}` from `#{@url}` using RAM Connector") do
             puts "\tRAM add command for spec-repo '#{@name}' from '#{@url}' just started".green
-            config.repos_dir.mkpath
-            Dir.chdir(config.repos_dir) do
-              #command = "checkout --non-interactive --trust-server-cert '#{@url}' #{@name}"
-              #!svn(command)
-            end
+            puts "`pod ram add my-svn-repo http://svn-repo-url` \"clones\" the repo from the RAM into ~/.cocoapods/repos/NAME".light_blue
+
+            self.remote_repo_url
+
+            # Create the folder
+            system("mkdir ~/.cocoapods/repos/#{@name}")
+
+            # Download the ZIP
+
+            # ZIP Unpacked
+
+            #
           end
         end
       end
 
-      # def initialize(argv)
-      #   @name = argv.shift_argument
-      #   super
-      # end
-      #
-      # def validate!
-      #   super
-      #   help! "A Pod name is required." unless @name
-      # end
-      #
-      # def run
-      #   UI.puts "Add your implementation for the cocoapods-repo-ram plugin in #{__FILE__}"
-      # end
+      # CocoaPods `pod ram update my-svn-repo http://svn-repo-url` "updates" the repo on ~/.cocoapods/repos/NAME based on the RAM
+      class Update < Ram
+
+      end
     end
   end
 end

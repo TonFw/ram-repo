@@ -1,0 +1,14 @@
+dev:
+  protocol: https
+  domain:   github.com
+  scope:    CocoaPods
+  action:   Specs
+  path:     archive
+  file:     master.zip
+prod:
+  protocol: https
+  domain:   github.com
+  scope:    CocoaPods
+  action:   Specs
+  path:     archive
+  file:     master.zip
