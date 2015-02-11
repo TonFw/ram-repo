@@ -62,6 +62,14 @@ module Pod
         system cmd
       end
 
+      def prepare_repo
+        # Remove the repos if it exist
+        system("rm -rf ~/.cocoapods/repos/#{@name}")
+
+        # Create the folder
+        system("mkdir ~/.cocoapods/repos/#{@name}")
+      end
+
       # CocoaPods `pod ram add my-svn-repo http://svn-repo-url` "clones" the repo from the RAM to ~/.cocoapods/repos/NAME
       class Add < Ram
         self.summary = Ram.description
@@ -91,11 +99,8 @@ module Pod
           UI.section("Checking out spec-repo `#{@name}` from `#{@url}` using RAM Connector") do
             puts "\tRAM add command for spec-repo '#{@name}' from '#{@url}' cloning into ~/.cocoapods/repos/#{@name}".green
 
-            # Remove the repos if it exist
-            system("rm -rf ~/.cocoapods/repos/#{@name}")
-
-            # Create the folder
-            system("mkdir ~/.cocoapods/repos/#{@name}")
+            # Prepare the repo folder
+            prepare_repo
 
             # Download the ZIP
             downloaded = self.download!
@@ -131,7 +136,16 @@ module Pod
         end
 
         def run
+          # Prepare the repo folder
+          prepare_repo
 
+          # Download the ZIP
+          downloaded = self.download!
+          puts "Error while downloading from #{@url}".red unless downloaded
+
+          # ZIP Unpacked
+          unzipped = self.unzip!
+          puts "Error while unzipping from #{pods.zip}".red unless unzipped
         end
       end
 
@@ -158,7 +172,7 @@ module Pod
         end
 
         def run
-
+          system("rm -rf ~/.cocoapods/repos/#{@name}") unless @name.nil?
         end
       end
     end

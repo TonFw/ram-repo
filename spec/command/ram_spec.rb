@@ -61,13 +61,13 @@ module Pod
       end
 
       it 'framework versions should be updated' do
-        pending 'check if the Specs frameworks versions updated'
-        this_should_not_get_executed
+        expect(`ls ~/.cocoapods/repos`.index(@repo_name)).to_not be_nil
       end
 
       it 'the folder creation date should be updated' do
-        pending 'check if the folder create time was near now'
-        this_should_not_get_executed
+        cmd_resp = `ls ~/.cocoapods/repos/ram-repo`
+        expect(cmd_resp).to_not be_empty
+        expect(cmd_resp.index(@libs_folder)).to_not be_nil
       end
     end
 
@@ -77,8 +77,7 @@ module Pod
       end
 
       it 'folder on ~/.cocoapods/repos/repo_name should not exists anymore' do
-        pending 'check if the repo_name & Specs were removed'
-        this_should_not_get_executed
+        expect(`ls ~/.cocoapods/repos`.index(@repo_name)).to be_nil
       end
     end
   end
