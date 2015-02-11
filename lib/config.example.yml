@@ -1,14 +1,8 @@
 dev:
-  protocol: https
-  domain:   github.com
-  scope:    CocoaPods
-  action:   Specs
-  path:     archive
-  file:     master.zip
+  protocol: https://
+  domain:   codeload.github.com
+  path:     /CocoaPods/Specs/zip/master
 prod:
-  protocol: https
-  domain:   github.com
-  scope:    CocoaPods
-  action:   Specs
-  path:     archive
-  file:     master.zip
+  protocol: https://
+  domain:   codeload.github.com
+  path:     /CocoaPods/Specs/zip/master

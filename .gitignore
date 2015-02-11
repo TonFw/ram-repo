@@ -2,3 +2,5 @@
 pkg
 .idea/
 lib/config.yml
+coverage
+pods.zip

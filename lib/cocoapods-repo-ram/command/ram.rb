@@ -17,11 +17,15 @@
 #
 
 require 'yaml'
+require 'zipruby'
+require 'net/http'
 require 'rest_client'
-require 'colorize'
 module Pod
   class Command
     class Ram < Command
+      attr_accessor :yml
+      attr_accessor :url_hash
+
       self.summary = "CocoaPods PlugIn to get dependencies on the RAM repository."
       self.description = <<-DESC
         The CocoaPods PlugIn for RAM was created by ton.garcia.jr@gmail.com & is used to:\n
@@ -33,8 +37,33 @@ module Pod
 
       self.arguments = 'NAME'
 
-      def remote_repo_url
-        thing = YAML.load_file('some.yml')
+      def get_url
+        YAML.open
+        req = self.yml[:dev]
+        req[:protocol]+req[:domain]+req[:path]
+      end
+
+      def strip_url
+        url_split = @url.split('/')
+
+        self.url_hash = {} if self.url_hash.nil?
+        self.url_hash[:protocol] = @url[0..@url.index('//')-2]
+        self.url_hash[:domain] = url_split[2]
+        self.url_hash[:path] = @url[@url.index(self.url_hash[:domain])-1, @url.length]
+      end
+
+      # @return [system_call execution]
+      def download!
+        file_name = 'pods.zip'
+        curl_cmd = 'curl -f -L -o'
+        cmd = "#{curl_cmd} #{file_name} #{@url} --create-dirs"
+
+        system(cmd)
+      end
+
+      # UnZIP the files to the Directory
+      def unzip
+
       end
 
       # CocoaPods `pod ram add my-svn-repo http://svn-repo-url` "clones" the repo from the RAM to ~/.cocoapods/repos/NAME
@@ -49,6 +78,9 @@ module Pod
 
         def initialize(argv)
           @name, @url = argv.shift_argument, argv.shift_argument
+          @url = self.get_url if @url.nil?
+
+          self.strip_url
           super
         end
 
@@ -61,26 +93,71 @@ module Pod
 
         def run
           UI.section("Checking out spec-repo `#{@name}` from `#{@url}` using RAM Connector") do
-            puts "\tRAM add command for spec-repo '#{@name}' from '#{@url}' just started".green
-            puts "`pod ram add my-svn-repo http://svn-repo-url` \"clones\" the repo from the RAM into ~/.cocoapods/repos/NAME".light_blue
-
-            self.remote_repo_url
+            puts "\tRAM add command for spec-repo '#{@name}' from '#{@url}' cloning into ~/.cocoapods/repos/#{@name}".green
 
             # Create the folder
             system("mkdir ~/.cocoapods/repos/#{@name}")
 
             # Download the ZIP
+            downloaded = self.download!
+            puts "Error while downloading from #{@url}".red unless downloaded
 
             # ZIP Unpacked
-
-            #
+            self.unzip
           end
         end
       end
 
-      # CocoaPods `pod ram update my-svn-repo http://svn-repo-url` "updates" the repo on ~/.cocoapods/repos/NAME based on the RAM
+      # CocoaPods `pod ram update my-svn-repo` "updates" the repo on ~/.cocoapods/repos/NAME based on the RAM
       class Update < Ram
+        self.summary = Ram.description
+        self.description = Ram.description
 
+        self.arguments = [
+            CLAide::Argument.new('NAME', true)
+        ]
+
+        def initialize(argv)
+          @name = argv.shift_argument
+          super
+        end
+
+        def validate!
+          super
+          unless @name
+            help! "Updating a spec-repo needs a `NAME`."
+          end
+        end
+
+        def run
+
+        end
+      end
+
+      # CocoaPods `pod ram remove my-svn-repo` "removes" the repo on ~/.cocoapods/repos/NAME
+      class Remove < Ram
+        self.summary = Ram.description
+        self.description = Ram.description
+
+        self.arguments = [
+            CLAide::Argument.new('NAME', true)
+        ]
+
+        def initialize(argv)
+          @name = argv.shift_argument
+          super
+        end
+
+        def validate!
+          super
+          unless @name
+            help! "Removing a spec-repo needs a `NAME`."
+          end
+        end
+
+        def run
+
+        end
       end
     end
   end

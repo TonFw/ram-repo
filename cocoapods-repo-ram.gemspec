@@ -36,4 +36,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "rest-client", '~> 1.7', '>= 1.7.2'
   # Easy JSON create
   spec.add_dependency "multi_json", '~> 1.10', '>= 1.10.1'
+  # Easy ZIP & UnZIP
+  spec.add_dependency "zipruby", '~> 0.3', '>= 0.3.6'
 end
