@@ -17,9 +17,6 @@
 #
 
 require 'yaml'
-require 'zipruby'
-require 'net/http'
-require 'rest_client'
 module Pod
   class Command
     class Ram < Command
@@ -38,7 +35,7 @@ module Pod
       self.arguments = 'NAME'
 
       def get_url
-        YAML.open
+        self.yml = YAML::load(File.open('lib/config.yml')).it_keys_to_sym
         req = self.yml[:dev]
         req[:protocol]+req[:domain]+req[:path]
       end
@@ -52,18 +49,17 @@ module Pod
         self.url_hash[:path] = @url[@url.index(self.url_hash[:domain])-1, @url.length]
       end
 
-      # @return [system_call execution]
       def download!
         file_name = 'pods.zip'
         curl_cmd = 'curl -f -L -o'
         cmd = "#{curl_cmd} #{file_name} #{@url} --create-dirs"
 
-        system(cmd)
+        system cmd
       end
 
-      # UnZIP the files to the Directory
-      def unzip
-
+      def unzip!
+        cmd = "unzip pods.zip -d ~/.cocoapods/repos/#{@name}"
+        system cmd
       end
 
       # CocoaPods `pod ram add my-svn-repo http://svn-repo-url` "clones" the repo from the RAM to ~/.cocoapods/repos/NAME
@@ -77,23 +73,26 @@ module Pod
         ]
 
         def initialize(argv)
-          @name, @url = argv.shift_argument, argv.shift_argument
+          @argv = argv
+          @name, @url = @argv.shift_argument, @argv.shift_argument
           @url = self.get_url if @url.nil?
 
+          validate!
           self.strip_url
           super
         end
 
         def validate!
           super
-          unless @name && @url
-            help! "Adding a spec-repo needs a `NAME` and a `URL`."
-          end
+          help! "Adding a spec-repo needs a `NAME` and a `URL`." unless @name && @url
         end
 
         def run
           UI.section("Checking out spec-repo `#{@name}` from `#{@url}` using RAM Connector") do
             puts "\tRAM add command for spec-repo '#{@name}' from '#{@url}' cloning into ~/.cocoapods/repos/#{@name}".green
+
+            # Remove the repos if it exist
+            system("rm -rf ~/.cocoapods/repos/#{@name}")
 
             # Create the folder
             system("mkdir ~/.cocoapods/repos/#{@name}")
@@ -103,7 +102,8 @@ module Pod
             puts "Error while downloading from #{@url}".red unless downloaded
 
             # ZIP Unpacked
-            self.unzip
+            unzipped = self.unzip!
+            puts "Error while unzipping from #{pods.zip}".red unless unzipped
           end
         end
       end
@@ -118,15 +118,16 @@ module Pod
         ]
 
         def initialize(argv)
-          @name = argv.shift_argument
+          @argv = argv.clone
+          @name = @argv.shift_argument
+
+          validate!
           super
         end
 
         def validate!
           super
-          unless @name
-            help! "Updating a spec-repo needs a `NAME`."
-          end
+          help! "Updating a spec-repo needs a `NAME`." unless @name
         end
 
         def run
@@ -144,15 +145,16 @@ module Pod
         ]
 
         def initialize(argv)
-          @name = argv.shift_argument
+          @argv = argv
+          @name = @argv.shift_argument
+
+          validate!
           super
         end
 
         def validate!
           super
-          unless @name
-            help! "Removing a spec-repo needs a `NAME`."
-          end
+          help! "Removing a spec-repo needs a `NAME`." unless @name
         end
 
         def run

@@ -3,16 +3,18 @@ require 'spec_helper'
 module Pod
   describe Command::Ram do
     @repo_name = 'ram-repo'
-    @repo_url  = 'https://alm.intranet.bb.com.br/ram/artifact/502E0D4B-726B-AC6D-863D-6BD85050ACB8/1.0'
+    @repo_url  = 'http://ram.intranet.bb.com.br/archiva/repository/repo/junit/junit/3.8.2/junit-3.8.2.jar'
 
     before(:all) do
+      # TODO change it to Specs when it came up
+      @libs_folder = 'junit'
       @repo_name = 'ram-repo'
-      @repo_url  = 'https://alm.intranet.bb.com.br/ram/artifact/502E0D4B-726B-AC6D-863D-6BD85050ACB8/1.0'
-      @argv = CLAide::ARGV.new([@repo_name, @repo_url])
+      @repo_url  = 'http://ram.intranet.bb.com.br/archiva/repository/repo/junit/junit/3.8.2/junit-3.8.2.jar'
 
-      @add_command    = Command::Ram::Add.new @argv
-      @update_command = Command::Ram::Update.new @argv
-      @remove_command = Command::Ram::Remove.new @argv
+      @add_command    = Command::Ram::Add.new create_argv @repo_name
+      @update_command = Command::Ram::Update.new create_argv @repo_name
+      @remove_command = Command::Ram::Remove.new create_argv @repo_name
+      @add_command_url= Command::Ram::Add.new create_argv_with_url @repo_name, @repo_url
     end
 
     describe 'CLAide ram running correctly' do
@@ -21,7 +23,23 @@ module Pod
       end
     end
 
-    describe "pod ram add #{@repo_name} #{@repo_url} " do
+    describe "pod ram add #{@repo_name} #{@repo_url}" do
+      before(:all) do
+        @add_command_url.run
+      end
+
+      it 'named repo should be created at ~/.cocoapods/repos/repo_name' do
+        expect(`ls ~/.cocoapods/repos`.index(@repo_name)).to_not be_nil
+      end
+
+      it 'should have the Specs, should not be empty' do
+        cmd_resp = `ls ~/.cocoapods/repos/ram-repo`
+        expect(cmd_resp).to_not be_empty
+        expect(cmd_resp.index(@libs_folder)).to_not be_nil
+      end
+    end
+
+    describe "pod ram add #{@repo_name} without passing URL on the CMD (static on the YML)" do
       before(:all) do
         @add_command.run
       end
@@ -31,8 +49,9 @@ module Pod
       end
 
       it 'should have the Specs, should not be empty' do
-        pending 'check if the Specs were cloned'
-        this_should_not_get_executed
+        cmd_resp = `ls ~/.cocoapods/repos/ram-repo`
+        expect(cmd_resp).to_not be_empty
+        expect(cmd_resp.index(@libs_folder)).to_not be_nil
       end
     end
 
