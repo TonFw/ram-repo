@@ -32,43 +32,42 @@ module Pod
         4. Test dependencies folder structure (Lint).
       DESC
 
-      def get_url
-        self.yml = YAML::load_file(File.join(File.dirname(File.expand_path(__FILE__)), 'sources/config.yml')).it_keys_to_sym
-        req = self.yml[:dev]
-        req[:protocol]+req[:domain]+req[:path]
+      def ram_tag
+        "PodsRAM says: "
       end
 
-      def strip_url
-        url_split = @url.split('/')
+      def repo_dir
+        "#{config.repos_dir}/#{@name}"
+      end
+      
+      # Retrieve the URL from the config file 
+      def get_url
+        return @url if @url
 
-        self.url_hash = {} if self.url_hash.nil?
-        self.url_hash[:protocol] = @url[0..@url.index('//')-2]
-        self.url_hash[:domain] = url_split[2]
-        self.url_hash[:path] = @url[@url.index(self.url_hash[:domain])-1, @url.length]
+        yml = YAML::load_file("#{repo_dir}/.ram_config")
+        yml = yml.it_keys_to_sym
+        @url = yml[:url]
+
+        UI.puts "-> error while reading the YML #{e.to_s}".red if @url.nil?
+        @url
       end
 
       def download!
+        `rm -rf pods.zip`
         file_name = 'pods.zip'
         curl_cmd = 'curl -f -L -o'
-        cmd = "#{curl_cmd} #{file_name} #{@url} --create-dirs"
+        cmd = "#{curl_cmd} #{file_name} #{get_url} --create-dirs"
 
         system cmd
       end
 
       def unzip!
-        cmd = "unzip pods.zip -d ~/.cocoapods/repos/#{@name}"
+        `rm -rf #{repo_dir}/Specs`
+        cmd = "unzip pods.zip -d #{repo_dir}/Specs"
         system cmd
       end
 
-      def prepare_repo
-        # Remove the repos if it exist
-        system("rm -rf ~/.cocoapods/repos/#{@name}")
-
-        # Create the folder
-        system("mkdir ~/.cocoapods/repos/#{@name}")
-      end
-
-      # CocoaPods `pod ram add my-svn-repo http://svn-repo-url` "clones" the repo from the RAM to ~/.cocoapods/repos/NAME
+      # CocoaPods `pod ram add my-ram-repo http://svn-repo-url` "clones" the repo from the RAM to #{config.repos_dir}/NAME
       class Add < Ram
         self.summary = Ram.description
         self.description = Ram.description
@@ -81,10 +80,10 @@ module Pod
         def initialize(argv)
           @argv = argv
           @name, @url = @argv.shift_argument, @argv.shift_argument
-          @url = self.get_url if @url.nil?
+          UI.puts "-> pods RAM add command need a valida URL".red if @url.nil?
 
           validate!
-          self.strip_url
+          self.strip_url if @url.nil?
           super
         end
 
@@ -93,25 +92,35 @@ module Pod
           help! "Adding a spec-repo needs a `NAME` and a `URL`." unless @name && @url
         end
 
+        # Create the YML with the URL passed
+        def create_config_file
+          f = File.open("#{repo_dir}/.ram_config",  "w+")
+          f.write "url: #{@url}"
+          f.close
+        end
+
         def run
           UI.section("Checking out spec-repo `#{@name}` from `#{@url}` using RAM Connector") do
-            puts "\tRAM add command for spec-repo '#{@name}' from '#{@url}' cloning into ~/.cocoapods/repos/#{@name}".green
+            config.repos_dir.mkpath
+            puts "#{ram_tag} RAM add command for spec-repo '#{@name}' from '#{@url}' cloning into #{repo_dir}".green
 
             # Prepare the repo folder
-            prepare_repo
+            `rm -rf #{repo_dir}`
+            `mkdir #{repo_dir}`
+            create_config_file
 
             # Download the ZIP
             downloaded = self.download!
-            puts "Error while downloading from #{@url}".red unless downloaded
+            puts "#{ram_tag} Error while downloading from #{@url}".red unless downloaded
 
             # ZIP Unpacked
             unzipped = self.unzip!
-            puts "Error while unzipping from #{pods.zip}".red unless unzipped
+            puts "#{ram_tag} Error while unzipping from `pods.zip`".red unless unzipped
           end
         end
       end
 
-      # CocoaPods `pod ram update my-svn-repo` "updates" the repo on ~/.cocoapods/repos/NAME based on the RAM
+      # CocoaPods `pod ram update my-ram-repo` "updates" the repo on #{config.repos_dir}/NAME based on the RAM
       class Update < Ram
         self.summary = Ram.description
         self.description = Ram.description
@@ -135,19 +144,19 @@ module Pod
 
         def run
           # Prepare the repo folder
-          prepare_repo
+          `rm -rf #{repo_dir}/Specs`
 
           # Download the ZIP
           downloaded = self.download!
-          puts "Error while downloading from #{@url}".red unless downloaded
+          puts "#{ram_tag} Error while downloading from #{@url}".red unless downloaded
 
           # ZIP Unpacked
           unzipped = self.unzip!
-          puts "Error while unzipping from #{pods.zip}".red unless unzipped
+          puts "#{ram_tag} Error while unzipping from #{pods.zip}".red unless unzipped
         end
       end
 
-      # CocoaPods `pod ram remove my-svn-repo` "removes" the repo on ~/.cocoapods/repos/NAME
+      # CocoaPods `pod ram remove my-ram-repo` "removes" the repo on #{config.repos_dir}/NAME
       class Remove < Ram
         self.summary = Ram.description
         self.description = Ram.description
@@ -170,7 +179,73 @@ module Pod
         end
 
         def run
-          system("rm -rf ~/.cocoapods/repos/#{@name}") unless @name.nil?
+          system("rm -rf #{repo_dir}") unless @name.nil?
+        end
+      end
+
+      # CocoaPods `pod ram lint my-ram-repo` "test" the repo on #{config.repos_dir}/NAME to know if it format is correct
+      class Lint < Ram
+        self.summary = 'Validates all specs in a repo.'
+
+        self.description = <<-DESC
+          Lints the spec-repo `NAME`. If a directory is provided it is assumed
+          to be the root of a repo. Finally, if `NAME` is not provided this
+          will lint all the spec-repos known to CocoaPods.
+        DESC
+
+        self.arguments = [
+            CLAide::Argument.new(%w(NAME DIRECTORY), true)
+        ]
+
+        def self.options
+          [["--only-errors", "Lint presents only the errors"]].concat(super)
+        end
+
+        def initialize(argv)
+          @name = argv.shift_argument
+          @only_errors = argv.flag?('only-errors')
+          super
+        end
+
+        # @todo Part of this logic needs to be ported to cocoapods-core so web
+        #       services can validate the repo.
+        #
+        # @todo add UI.print and enable print statements again.
+        #
+        def run
+          @name ? dirs = File.exists?(@name) ? [ Pathname.new(@name) ] : [ repo_dir ] : dirs = config.repos_dir.children.select {|c| c.directory?}
+
+          dirs.each do |dir|
+            SourcesManager.check_version_information(dir) #todo: test me
+            UI.puts "\nLinting spec repo `#{@name}`\n".yellow
+
+            validator = Source::HealthReporter.new(dir)
+            validator.pre_check do |name, version|
+              UI.print '.'
+            end
+            report = validator.analyze
+            UI.puts
+            UI.puts
+
+            report.pods_by_warning.each do |message, versions_by_name|
+              UI.puts "-> #{message}".yellow
+              versions_by_name.each { |name, versions| UI.puts "  - #{name} (#{versions * ', '})" }
+              UI.puts
+            end
+
+            report.pods_by_error.each do |message, versions_by_name|
+              UI.puts "-> #{message}".red
+              versions_by_name.each { |name, versions| UI.puts "  - #{name} (#{versions * ', '})" }
+              UI.puts
+            end
+
+            UI.puts "Analyzed #{report.analyzed_paths.count} podspecs files.\n\n"
+            if report.pods_by_error.count.zero?
+              UI.puts "All the specs passed validation.".green << "\n\n"
+            else
+              raise Informative, "#{report.pods_by_error.count} podspecs failed validation."
+            end
+          end
         end
       end
     end

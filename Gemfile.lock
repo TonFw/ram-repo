@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    cocoapods-repo-ram (1.0.1)
+    cocoapods-repo-ram (1.0.0)
       curb (~> 0.8, >= 0.8.6)
       multi_json (~> 1.10, >= 1.10.1)
       rest-client (~> 1.7, >= 1.7.2)
