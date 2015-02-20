@@ -1,6 +1,5 @@
 .DS_Store
 pkg
 .idea/
-lib/config.yml
 coverage
 pods.zip

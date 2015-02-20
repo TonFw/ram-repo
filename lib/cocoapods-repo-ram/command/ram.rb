@@ -32,10 +32,8 @@ module Pod
         4. Test dependencies folder structure (Lint).
       DESC
 
-      self.arguments = 'NAME'
-
       def get_url
-        self.yml = YAML::load(File.open('lib/config.yml')).it_keys_to_sym
+        self.yml = YAML::load_file(File.join(File.dirname(File.expand_path(__FILE__)), 'sources/config.yml')).it_keys_to_sym
         req = self.yml[:dev]
         req[:protocol]+req[:domain]+req[:path]
       end

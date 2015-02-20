@@ -1,0 +1,8 @@
+dev:
+  protocol: http://
+  domain:   ram.intranet.bb.com.br
+  path:     /archiva/repository/repo/junit/junit/3.8.2/junit-3.8.2.jar
+prod:
+  protocol: http://
+  domain:   ram.intranet.bb.com.br
+  path:     /archiva/repository/repo/junit/junit/3.8.2/junit-3.8.2.jar
